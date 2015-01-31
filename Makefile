@@ -1,5 +1,8 @@
 APP_NAME=$(notdir $(shell pwd))
 APP_SERVICES=$(APP_NAME)
+APP_VERSION=$(shell git rev-parse --short HEAD)
+DOCKER_REGISTRY=$(if $(DOCKER_REGISTRY_USER),$(DOCKER_REGISTRY_USER),$(USER))/$(APP_NAME)
+
 #!! PROD START
 help: ## Show this help.
 	@echo "\n\
@@ -92,7 +95,22 @@ ci-setup: clean setup build env-up
 	$(MAKE) setup DEV=1
 
 ci: ## from scratch; setup, build, test and push (to docker hub registry)
-ci: ci-setup test ## push
+ci: ci-setup test
+
+tag: ## tag latest image using git sha as tag
+	printf "Tagging $(APP_NAME):latest > $(DOCKER_REGISTRY):$(APP_VERSION) ... "
+	docker tag -f $(APP_NAME):latest $(DOCKER_REGISTRY):$(APP_VERSION) 
+	docker tag -f $(APP_NAME):latest $(DOCKER_REGISTRY):latest
+	echo Done
+	docker images
+
+push: ## push latest built image to registry
+	printf "Pushing $(DOCKER_REGISTRY):$(APP_VERSION) ... "
+	if [ -n "$(DOCKER_REGISTRY_USER)" ]; then \
+		docker login -e $(DOCKER_REGISTRY_EMAIL) -u $(DOCKER_REGISTRY_USER) -p $(DOCKER_REGISTRY_PASS) $(DOCKER_REGISTRY_HOST) https://index.docker.io/v1/; \
+	fi
+	docker push $(DOCKER_REGISTRY):$(APP_VERSION)
+	echo Done
 
 generate-dockerignore: ## generate ignore list (based of .gitignore + dockerignore.txt)
 	cat .gitignore dockerignore.txt \
