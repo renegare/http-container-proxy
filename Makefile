@@ -44,7 +44,8 @@ build: ## build image of application
 
 	echo "Building the damn thing ... "
 	docker build --force-rm=true -t $(APP_NAME) .
-	docker run --rm $(APP_NAME) || true
+	sleep 1
+	-docker run $(APP_NAME) || true
 	echo
 	echo
 	echo Done!
