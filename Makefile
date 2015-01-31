@@ -109,7 +109,7 @@ push: ## push latest built image to registry
 	if [ -n "$(DOCKER_REGISTRY_USER)" ]; then \
 		docker login -e $(DOCKER_REGISTRY_EMAIL) -u $(DOCKER_REGISTRY_USER) -p $(DOCKER_REGISTRY_PASS) $(DOCKER_REGISTRY_HOST) https://index.docker.io/v1/; \
 	fi
-	docker push $(DOCKER_REGISTRY):$(APP_VERSION)
+	docker push $(DOCKER_REGISTRY)
 	echo Done
 
 generate-dockerignore: ## generate ignore list (based of .gitignore + dockerignore.txt)
