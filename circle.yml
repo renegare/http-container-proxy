@@ -3,12 +3,6 @@ machine:
         version: 5.5.8
     services:
         - docker
-    post:
-        - wget https://github.com/coreos/fleet/releases/download/v0.8.3/fleet-v0.8.3-linux-amd64.tar.gz
-        - tar -xvf fleet-v0.8.3-linux-amd64.tar.gz
-        - sudo cp fleet-v0.8.3-linux-amd64/fleetctl /usr/local/bin
-        - fleetctl -version
-        - rm -rf fleet-v0.8.3-linux-amd64.tar.gz
 dependencies:
     override:
         - docker version
