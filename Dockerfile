@@ -1,14 +1,15 @@
-FROM renegare/php:5.5.9
+FROM        renegare/php:5.5.9
 
-RUN apt-get install -y make
+RUN         apt-get install -y make
 
-COPY . /var/www
+COPY        env/healthcheck.html /var/www/html/healthcheck/index.html
+COPY        . /var/app
 
-WORKDIR /var/www
+WORKDIR     /var/app
 
-EXPOSE 80
+RUN         rm -rf Makefile && \
+                mv Makefile.prod Makefile
 
-RUN rm -rf Makefile && \
-    mv Makefile.prod Makefile
+EXPOSE      80
 
-ENTRYPOINT ["/usr/bin/make", "-s"]
+ENTRYPOINT  ["/usr/bin/make", "-s"]

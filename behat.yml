@@ -1,0 +1,15 @@
+default:
+    autoload:
+        '': %paths.base%/features/bootstrap
+
+    suites:
+        default:
+            contexts:
+                - App\Test\BDD\WebPageContext
+                - Behat\MinkExtension\Context\MinkContext
+
+    extensions:
+        Behat\MinkExtension:
+            sessions:
+                default:
+                    goutte: ~
