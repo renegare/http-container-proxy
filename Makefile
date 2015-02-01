@@ -1,7 +1,9 @@
 APP_NAME=$(notdir $(shell pwd))
-APP_SERVICES=$(APP_NAME)
+APP_SERVICES=$(APP_NAME),$(APP_NAME)_etcd
 APP_VERSION=$(shell git rev-parse --short HEAD)
 DOCKER_REGISTRY=$(if $(DOCKER_REGISTRY_USER),$(DOCKER_REGISTRY_USER),$(USER))/$(APP_NAME)
+
+ETCD_VERSION=coreos/etcd:v0.4.6
 
 #!! PROD START
 help: ## Show this help.
@@ -17,6 +19,9 @@ Available Make tasks: \n"
 
 start: ## start application
 	/usr/sbin/service php5-fpm start && nginx
+
+generate-proxy-config: ## generate proxy configuration based on configuration (etcd)
+	@./cmd generate:proxy:config $(ETCD_HOST) $(ETCD_NAMESPACE)
 
 #!! PROD END
 
@@ -62,7 +67,7 @@ test-integration: export APPHOST=$(if $(APP_HOST),$(APP_HOST),http://$(shell $(M
 test-integration:
 	echo "base_url:\t\t$(APPHOST)"
 	BEHAT_PARAMS='{"extensions":{"Behat\\MinkExtension":{"base_url":"$(APPHOST)"}}}' \
-		vendor/bin/behat
+		vendor/bin/behat $(if $(CURRENT),--tags @current,)
 
 env: ## display environment variables
 	env
@@ -77,12 +82,17 @@ env-up: env-down
 	docker run -dP \
 	--name $(APP_NAME) $(APP_NAME) start
 
+	if [ `docker inspect --format='{{.State.Running}}' $(APP_NAME)_etcd 2>/dev/null || echo false` != true ]; then \
+		docker run -d --name $(APP_NAME)_etcd \
+			-P $(ETCD_VERSION); \
+	fi
+
 env-shell:
 	docker exec -it $(APP_NAME) $(if $(CMD), /bin/bash -c '$(CMD)', /bin/bash)
 
 env-down:
-	-docker kill $(APP_NAME)
-	-docker rm $(APP_NAME)
+	echo $(APP_SERVICES) | tr ',' "\n" | xargs -n1 docker kill 2>/dev/null || true
+	echo $(APP_SERVICES) | tr ',' "\n" | xargs -n1 docker rm 2>/dev/null || true
 
 env-status: ## display services running
 	echo Services running:
@@ -131,3 +141,6 @@ show-app-host: ## if app is running, show the host
 	else \
 		printf `docker inspect --format {{.NetworkSettings.IPAddress}} $(APP_NAME)`; \
 	fi
+
+show-all-keys:
+	docker exec $(APP_NAME)_etcd /etcdctl ls --recursive
