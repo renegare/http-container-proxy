@@ -12,7 +12,7 @@ class ServiceObject {
     }
 
     public function __isset($name) {
-        return in_array($name, ['host']) || preg_match('/^p(\d+)/', $name);
+        return in_array($name, ['host', 'name']) || preg_match('/^p(\d+)/', $name);
     }
 
     public function __get($name) {
@@ -21,6 +21,8 @@ class ServiceObject {
             $value = $this->dockerHostIp? $this->dockerHostIp : $this->data['NetworkSettings']['IPAddress'];
         } elseif(preg_match('/^p(\d+)/', $name, $matches)) {
             $value = $this->getPort($matches[1]);
+        } elseif($name === 'name' && isset($this->data['Name'])) {
+            $value = trim($this->data['Name'], '/');
         }
 
         return $value;

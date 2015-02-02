@@ -38,4 +38,13 @@ class WebPageContext implements Context, SnippetAcceptingContext
         $class = sprintf(__NAMESPACE__ . '\Page\%sPage', implode('', $type));
         return new $class;
     }
+
+    /**
+     * @When I wait for :count second
+     * @When I wait for :count seconds
+     */
+    public function iWaitForSecond($seconds)
+    {
+        sleep($seconds);
+    }
 }

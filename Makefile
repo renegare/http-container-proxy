@@ -1,9 +1,10 @@
 APP_NAME=$(notdir $(shell pwd))
-APP_SERVICES=$(APP_NAME),$(APP_NAME)_etcd
+APP_SERVICES=$(APP_NAME),$(APP_NAME)_etcd,$(APP_NAME)_blue,$(APP_NAME)_green
 APP_VERSION=$(shell git rev-parse --short HEAD)
 DOCKER_REGISTRY=$(if $(DOCKER_REGISTRY_USER),$(DOCKER_REGISTRY_USER),$(USER))/$(APP_NAME)
 
 ETCD_VERSION=coreos/etcd:v0.4.6
+TEST_SERVER_VERSION=renegare/test-server:latest
 
 #!! PROD START
 help: ## Show this help.
@@ -18,10 +19,27 @@ Available Make tasks: \n"
 	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##//'; \
 
 start: ## start application
-	/usr/sbin/service php5-fpm start && nginx
+	echo Updating proxy config ...
+	$(MAKE) generate-proxy-config
+	$(MAKE) generate-proxy-config > /etc/nginx/sites-enabled/proxy
+	ln -s /etc/nginx/sites-enabled/proxy /etc/nginx/sites-available/proxy
+	echo Staring nginx proxy ...
+	/usr/sbin/service nginx start
+	$(MAKE) watch
 
 generate-proxy-config: ## generate proxy configuration based on configuration (etcd)
 	@./cmd generate:proxy:config $(ETCD_HOST) $(ETCD_NAMESPACE)
+
+watch:
+	while [ true ] ; do \
+		echo Staring watching $(ETCD_NAMESPACE) for changes ...; \
+		etcdctl -C $(ETCD_HOST) --no-sync watch --recursive $(ETCD_NAMESPACE); \
+		echo Detected a change.; \
+		echo Updating proxy config ...; \
+		$(MAKE) generate-proxy-config; \
+		$(MAKE) generate-proxy-config > /etc/nginx/sites-enabled/proxy; \
+		nginx -s reload; \
+	done
 
 #!! PROD END
 
@@ -73,26 +91,39 @@ env: ## display environment variables
 	env
 
 env-clean: env-down
-	docker rmi $(APP_NAME) || true
-	docker ps -a -f status=exited -q | xargs docker rm || true
-	docker images -q -f dangling=true | xargs docker rmi || true
+	docker rmi $(APP_NAME) 2>/dev/null || true
+	docker ps -a -f status=exited -q | xargs docker rm 2>/dev/null || true
+	docker images -q -f dangling=true | xargs docker rmi 2>/dev/null || true
 
 env-up: ## start app in dev environment
 env-up: env-down
-	docker run -dP \
-	--name $(APP_NAME) $(APP_NAME) start
+	docker run -d --name $(APP_NAME)_etcd \
+		-P $(ETCD_VERSION)
 
-	if [ `docker inspect --format='{{.State.Running}}' $(APP_NAME)_etcd 2>/dev/null || echo false` != true ]; then \
-		docker run -d --name $(APP_NAME)_etcd \
-			-P $(ETCD_VERSION); \
-	fi
+	docker run -d --name $(APP_NAME)_blue \
+		-e RESPONSE='Blue Server' \
+		-P $(TEST_SERVER_VERSION) start
+
+	docker run -d --name $(APP_NAME)_green \
+		-e RESPONSE='Green Server' \
+		-P $(TEST_SERVER_VERSION) start
+
+	docker run -dP \
+		--name $(APP_NAME) \
+		--link $(APP_NAME)_etcd:etcd.local \
+		-e ETCD_HOST=http://etcd.local:4001 \
+		-e ETCD_NAMESPACE=$(if $(ETCD_NAMESPACE),$(ETCD_NAMESPACE),/) \
+			$(APP_NAME) start
+
+	$(MAKE) env-status
 
 env-shell:
 	docker exec -it $(APP_NAME) $(if $(CMD), /bin/bash -c '$(CMD)', /bin/bash)
 
 env-down:
-	echo $(APP_SERVICES) | tr ',' "\n" | xargs -n1 docker kill 2>/dev/null || true
-	echo $(APP_SERVICES) | tr ',' "\n" | xargs -n1 docker rm 2>/dev/null || true
+	echo $(APP_SERVICES) | tr ',' "\n" | xargs -n1 docker stop 2>/dev/null \
+	| xargs -n1 docker kill 2>/dev/null \
+	| xargs -n1 docker rm 2>/dev/null || true
 
 env-status: ## display services running
 	echo Services running:
@@ -144,3 +175,7 @@ show-app-host: ## if app is running, show the host
 
 show-all-keys:
 	docker exec $(APP_NAME)_etcd /etcdctl ls --recursive
+
+set-key:
+	docker exec $(APP_NAME)_etcd /etcdctl set $(KEY) $(VALUE)
+

@@ -41,13 +41,6 @@ class ContainerContext implements Context, SnippetAcceptingContext
         $this->availabelServices    = $availabelServices;
     }
 
-    // /** @BeforeScenario */
-    // public function gatherContexts(BeforeScenarioScope $scope)
-    // {
-    //     $environment = $scope->getEnvironment();
-    //     $this->environmentContext = $environment->getContext('App\Test\BDD\EnvironmentContext');
-    // }
-
     protected static function isBoot2Docker() {
         if(self::$boot2DockerIp === null) {
             self::$boot2DockerIp = getenv(self::BOOT2DOCKER_HOST_ENV);
@@ -77,6 +70,10 @@ class ContainerContext implements Context, SnippetAcceptingContext
 
     /**
      * @When I run the command:
+     * @Given I run the following commands:
+     * @Given no services is running:
+     * @Given I start the application environment:
+     * @Given I start the aplication:
      */
     public function iRunTheCommand(PyStringNode $command)
     {

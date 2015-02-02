@@ -8,6 +8,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Command\Command;
 use App\EtcdClient;
+use GuzzleHttp\Exception\ClientException;
 
 class GenerateProxyCommand extends Command {
     protected function configure() {
@@ -27,6 +28,7 @@ class GenerateProxyCommand extends Command {
         array_walk($services, function($service) use (&$group) {
             if(!isset($group[$service['domain']])) {
                 $group[$service['domain']] = [
+                    'name'      => str_replace('.', '_', $service['domain']),
                     'domain'    => $service['domain'],
                     'backend'   => []
                 ];
@@ -48,26 +50,20 @@ class GenerateProxyCommand extends Command {
     }
 
     protected function execute(InputInterface $input, OutputInterface $output) {
-        $tmpl = <<<EOF
-{{#group}}
-upstream {{domain}} {
-    {{#backend}}
-    server {{host}}:{{ports.80}};
-    {{/backend}}
-}
-server {
-  server_name {{domain}};
-  proxy_set_header X-Real-IP \$remote_addr;
-  proxy_set_header Host \$host;
-  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-  proxy_pass http://{{domain}};
-}
-
-{{/group}}
-EOF;
+        $tmpl = $this->getTemplate();
         $namespace = $input->getArgument('etcd_namespace');
-        $client = new EtcdClient($input->getArgument('etcd_host'));
-        $directoryList = $client->getRecursive($namespace);
+
+        try {
+            $client = new EtcdClient($input->getArgument('etcd_host'));
+            $directoryList = $client->getRecursive($namespace);
+        } catch (ClientException $e) {
+            $response = $e->hasResponse()? $e->getResponse() : null;
+            if(!$response || $response->getStatusCode() !== 404) {
+                throw $e;
+            }
+            $directoryList = [];
+        }
+
         $pattern = sprintf('#^%s/([^/]+)/([^/]+)/([^/]+)$#', $namespace);
         array_walk($directoryList, function(&$value, $path) use ($pattern) {
             if(preg_match($pattern, $path, $matches)) {
@@ -82,5 +78,30 @@ EOF;
 
         $mustache = new \Mustache_Engine;
         $output->writeln($mustache->render($tmpl, ['group' => $this->groupServices($directoryList)]));
+    }
+
+    protected function getTemplate() {
+        return <<<EOF
+{{#group}}
+upstream {{name}} {
+    {{#backend}}
+    server {{host}}:{{ports.80}};
+    {{/backend}}
+}
+
+server {
+    listen 80;
+    server_name {{domain}};
+
+    location / {
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_pass http://{{name}};
+    }
+}
+
+{{/group}}
+EOF;
     }
 }

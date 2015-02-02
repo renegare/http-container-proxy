@@ -12,6 +12,8 @@ default:
                     availabelServices:
                         app: http-container-proxy
                         etcd: http-container-proxy_etcd
+                        blue: http-container-proxy_blue
+                        green: http-container-proxy_green
                 - App\Test\BDD\EtcdServiceContext
 
     extensions:
