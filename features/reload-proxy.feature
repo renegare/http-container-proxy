@@ -14,7 +14,6 @@ Background: Start the proxy and backend services
         --link {{green.name}}:green.backend.com \
         -e ETCD_HOST=http://{{etcd.host}}:{{etcd.p4001}} \
         -e ETCD_NAMESPACE=/namespace-10.0.0.1-web \
-        -v `pwd`:/var/app \
         {{image}} start
     """
     And I wait for 3 second

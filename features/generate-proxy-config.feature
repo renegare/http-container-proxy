@@ -10,7 +10,6 @@ Scenario: Generate Empty Config
     docker run \
         -e ETCD_HOST=http://{{etcd.host}}:{{etcd.p4001}} \
         -e ETCD_NAMESPACE=/namespace-10.0.0.1-web \
-        -v `pwd`:/var/app \
         {{image}} generate-proxy-config
     """
 
@@ -33,7 +32,6 @@ Scenario: Generate Config
     docker run \
         -e ETCD_HOST=http://{{etcd.host}}:{{etcd.p4001}} \
         -e ETCD_NAMESPACE=/namespace-10.0.0.1-web \
-        -v `pwd`:/var/app \
         {{image}} generate-proxy-config
     """
 
