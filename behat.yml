@@ -5,8 +5,16 @@ default:
     suites:
         default:
             contexts:
-                - App\Test\BDD\WebPageContext
                 - Behat\MinkExtension\Context\MinkContext
+                - App\Test\BDD\WebPageContext
+                - App\Test\BDD\ContainerContext:
+                    image: http-container-proxy
+                    availabelServices:
+                        app: http-container-proxy
+                        etcd: http-container-proxy_etcd
+                        blue: http-container-proxy_blue
+                        green: http-container-proxy_green
+                - App\Test\BDD\EtcdServiceContext
 
     extensions:
         Behat\MinkExtension:

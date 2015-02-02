@@ -18,13 +18,16 @@
         "php": ">=5.4.0",
         "symfony/process": ">=2.5.0",
         "renegare/will": "*",
-        "renegare/configen":"*"
+        "renegare/configen":"*",
+        "guzzlehttp/guzzle": "5.2.0",
+        "symfony/console": ">=2.5"
     },
 
     "require-dev": {
         "phpunit/phpunit": "4.3.5",
         "behat/behat": "~3.0.6",
         "behat/mink-extension": "~2.0.1",
-        "behat/mink-goutte-driver": "*"
+        "behat/mink-goutte-driver": "*",
+        "mustache/mustache": "v2.7.0"
     }
 }

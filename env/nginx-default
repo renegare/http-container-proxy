@@ -1,0 +1,14 @@
+server {
+  listen 80;
+  location / {
+    return 404;
+  }
+  location /healthcheck/ {
+    return 200;
+  }
+}
+
+server {
+    listen 80;
+    return 404;
+}
